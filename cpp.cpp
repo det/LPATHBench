@@ -1,73 +1,59 @@
-#include <ctime>
-#include <vector>
-#include <bitset>
+#include <chrono>
 #include <fstream>
 #include <iostream>
-#include <string>
-#include <chrono>
+#include <vector>
 
-using namespace std;
-using namespace std::chrono;
-
-struct route{
-  int dest, cost;
-};
-
-struct node {
-  vector<route> neighbours;
-};
-
-vector<node> readPlaces(){
-  ifstream text("agraph");
-  int numNodes; text >> numNodes;
-  vector<node> nodes(numNodes);
-  int node, neighbour, cost;
-  while (text >> node >> neighbour >> cost){
-    nodes[node].neighbours.push_back(route{neighbour, cost});
-  }
-  return nodes;
-}
-
-template <int T>
-int getLongestPath(const vector<node> &nodes, const int nodeID, bitset<T> visited){
-  visited[nodeID] = true;
-  int max=0;
-  for(const route &neighbour: nodes[nodeID].neighbours){
-    if (visited[neighbour.dest] == false){
-      const int dist = neighbour.cost + getLongestPath<T>(nodes, neighbour.dest, visited);
-      if (dist > max){
-        max = dist;
-      }
-    }
-  }
-  visited[nodeID] = false;
-  return max;
-}
-
-int getLongestPath(const vector<node> &nodes)
+struct Route
 {
-  if (nodes.size() <= 16) {
-     return getLongestPath<16>(nodes, 0, bitset<16>());
-  } else if (nodes.size() <= 256) {
-    return getLongestPath<256>(nodes, 0, bitset<256>());
-  } else if (nodes.size() <= 4096) {
-    return getLongestPath<4096>(nodes, 0, bitset<4096>());
-  } else if (nodes.size() <= 65536) {
-    return getLongestPath<65536>(nodes, 0, bitset<65536>());
-  } else if (nodes.size() <= 1048576) {
-    return getLongestPath<1048576>(nodes, 0, bitset<1048576>());
-  } else if (nodes.size() <= 16777216) {
-    return getLongestPath<16777216>(nodes, 0, bitset<16777216>());
-  } else {
-    return -1;
-  }
+    int dest;
+    int cost;
+};
+
+using Node = std::vector<Route>;
+
+std::vector<char> visited;
+std::vector<Node> nodes;
+
+static
+int GetLongestPath(int index)
+{
+    int max = 0;
+    visited[index] = true;
+
+    for (auto neighbour : nodes[index])
+    {
+        if (!visited[neighbour.dest])
+        {
+            auto dist = neighbour.cost + GetLongestPath(neighbour.dest);
+            max = std::max(max, dist);
+        }
+    }
+
+    visited[index] = false;
+    return max;
 }
 
-int main(int argc, char** argv){
-  auto nodes = readPlaces();
-  auto start = high_resolution_clock::now();
-  int len = getLongestPath(nodes);
-  auto end = high_resolution_clock::now();
-  auto duration = (int)(0.001 * duration_cast<microseconds>(end - start).count());
-  cout << len << " LANGUAGE C++/" << COMPILER << " " << duration << std::endl;
+
+int main()
+{
+    std::ifstream in("agraph");
+
+    int num_nodes;
+    in >> num_nodes;
+    nodes.resize(num_nodes);
+    visited.resize(num_nodes);
+
+    int index;
+    int neighbour;
+    int cost;
+    while (in >> index >> neighbour >> cost)
+    {
+        nodes[index].push_back({neighbour, cost});
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    auto len = GetLongestPath(0);
+    auto stop = std::chrono::steady_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::cout << len << " LANGUAGE C++/" << COMPILER << " " << ms.count() << "\n";
 }
